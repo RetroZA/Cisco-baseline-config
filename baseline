@@ -1,0 +1,132 @@
+term len 0
+
+config t
+no ip source-route
+service timestamps debug datetime msec localtime show-timezone
+service timestamps log datetime msec localtime show-timezone
+service password-encryption
+username wvadmin privilege 15 { Password }
+
+archive
+log config
+logging enable
+logging size 200
+hidekeys
+exit
+login on-failure log
+login on-success log
+path flash:archived-configs
+maximum 5
+
+interface Vlan1
+ip address 10.144.10.9 255.255.255.0
+no ip route-cache
+
+ip default-gateway 10.144.10.2
+no ip http server
+no ip http secure-server
+hostname EH-CORE-48P
+enable { Password }
+ip domain-name wavenetwork.inet
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 4
+transport input ssh
+login local
+exit
+
+ip ssh time-out 60
+ip ssh authentication-retries 2
+password encryption aes
+login block-for 15 attempts 5 within 5
+login on-failure log
+
+int range g1/0/2 - 48
+switchport mode access
+switchport access vlan 1
+description Data_Port
+spanning-tree portfast
+no shut
+exit
+
+ntp source Vlan1
+ntp server 10.144.10.2
+ntp server {ntp server ip} prefer source {vlan id} version 3
+ntp server {ntp server ip} source {vlan id} version 3
+
+clock timezone GMT +2
+snmp-server community {RO Community} RO 10
+snmp-server contact {Contact Info}
+snmp-server host {trap server if used}
+snmp-server location {site_location}
+
+line con 0
+exec-timeout 5
+session-timeout 10
+logging synchronous
+password { Password }
+login
+exit
+line vty 0 4
+password { Password }
+login local
+
+line vty 0 15
+exec-timeout 5
+session-timeout 10
+transport input ssh
+logging synchronous
+exit
+
+vtp mode trans
+
+spanning-tree vlan 1,10,99 root primary
+debug spanning-tree events
+spanning-tree mode rapid-pvst
+
+copy running-config startup-config
+
+banner exec ^
+*****************************************************************************
+*                                Corporation                                *
+* WARNING:                                                                  *
+*           FOR AUTHORIZED USE ONLY.  This system and all data              *
+*           are the property of Corporation. Unauthorized                   *
+*           use or attempted unauthorized use of this system                *
+*           by persons not issued a user account is not permitted and       *
+*           may constitute a state or federal offense.  Use of this         *
+*           system is only permitted under the authority of Corporation     *
+*           and subject to the polices, procedures and acceptable use as    *
+*           defined by Corporation.                                         *
+*           Any use of this computer system constitutes express consent     *
+*           for authorized personnel to monitor, intercept, record,         *
+*           read, copy access and capture such information for use or       *
+*           disclosure without additional prior notice.  Users have         *
+*           no legitimate expectation of privacy during any use of this     *
+*           system or in any data on this system. Your access may be        *
+*           logged at any time.                                             *
+*                                                                           *
+*           By logging into this system, you are agreeing that you have     *
+*           read and accepted the above terms and conditions.               *
+*                                                                           *
+*****************************************************************************^
+banner login ^
+***************************************************************
+*   ACCESS IS RESTRICTED TO AUTHORIZED USERS ONLY!            *
+*   UNAUTHORIZED ACCESS IS A VIOLATION OF STATE AND FEDERAL,  *
+*   CIVIL AND CRIMINAL LAWS.                                  *
+***************************************************************^
+exit
+wr mem
+
+//Port Security Example
+switchport port-security maximum 2
+switchport port-security mac-address sticky
+switchport port-security violation shutdown
+
+//Upgrade Firmware
+copy flash:/c3750e-universalk9-mz.152-2.E8/c3750e-universalk9-mz.152-2.E8.bin tftp:
+copy tftp: flash:c3750e-universalk9-mz.152-4.E10.bin
+config t
+boot system flash:c3750e-universalk9-mz.152-4.E10.bin;flash:/c3750e-universalk9-mz.152-2.E8/c3750e-universalk9-mz.152-2.E8.bin
+
